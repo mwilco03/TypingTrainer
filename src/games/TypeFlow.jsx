@@ -905,7 +905,7 @@ export default function TypeFlow({ progressData, onRecordKeystroke, onEndSession
             playSound('levelUp', soundEnabled);
           }
 
-          setTimeout(generateExercise, 200);
+          setTimeout(generateExercise, 450);
         }
       } else {
         playSound('wrong', soundEnabled);
@@ -957,7 +957,6 @@ export default function TypeFlow({ progressData, onRecordKeystroke, onEndSession
     }));
 
     // Report session to shared engine
-    const { starsEarned } = { starsEarned: 0 };
     onEndSession({
       game: 'typeflow',
       durationMs: Date.now() - (sessionStartTime || Date.now()),
@@ -1093,7 +1092,10 @@ export default function TypeFlow({ progressData, onRecordKeystroke, onEndSession
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-3">
           <button
-            onClick={() => setScreen('menu')}
+            onClick={() => {
+              if (exerciseCount > 0) handleEndSession();
+              else setScreen('menu');
+            }}
             className="text-gray-400 hover:text-gray-600 text-sm px-2 py-1 rounded hover:bg-white/50"
           >
             &larr; Modules

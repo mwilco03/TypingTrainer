@@ -12,6 +12,42 @@ import WordHunt from './games/WordHunt';
 import KitchenISpy from './games/KitchenISpy';
 import TypingJournal from './games/TypingJournal';
 
+// Error boundary to prevent full-app crashes from game errors
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-lg text-center">
+            <div className="text-4xl mb-3">&#x26A0;&#xFE0F;</div>
+            <h2 className="text-lg font-bold text-gray-800 mb-2">Something went wrong</h2>
+            <p className="text-sm text-gray-500 mb-4">The game ran into an error. No progress was lost.</p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false });
+                window.location.hash = '#/';
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Simple hash-based router
 function useHashRoute() {
   const [route, setRoute] = useState(window.location.hash || '#/');
@@ -36,7 +72,8 @@ export default function App() {
     return !localStorage.getItem('typingTainer_onboarded');
   });
   const { route, navigate } = useHashRoute();
-  const a11ySettings = useAccessibility();
+  // Applies accessibility CSS classes to document root
+  useAccessibility();
 
   // Save whenever progress changes
   useEffect(() => {
@@ -148,9 +185,9 @@ export default function App() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       {content}
       {showA11y && <AccessibilityModal onClose={() => setShowA11y(false)} />}
-    </>
+    </ErrorBoundary>
   );
 }

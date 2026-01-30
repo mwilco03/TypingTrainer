@@ -64,7 +64,7 @@ const GAMES = [
   },
 ];
 
-function GameCard({ game, masteredKeys, onNavigate }) {
+function GameCard({ game, onNavigate }) {
   const isDisabled = game.comingSoon;
 
   return (
@@ -174,7 +174,6 @@ export default function Hub({ progressData, onNavigate, onSetProfile, onShowAcce
 
   const { profile, stars } = progressData;
   const masteredKeys = ProgressionEngine.getMasteredKeys(progressData);
-  const norms = ProgressionEngine.getNorms(progressData);
 
   const lessons = GAMES.filter(g => g.category === 'lessons');
   const arcade = GAMES.filter(g => g.category === 'arcade');
@@ -260,7 +259,6 @@ export default function Hub({ progressData, onNavigate, onSetProfile, onShowAcce
               <GameCard
                 key={game.id}
                 game={game}
-                masteredKeys={masteredKeys}
                 onNavigate={onNavigate}
               />
             ))}
@@ -277,7 +275,6 @@ export default function Hub({ progressData, onNavigate, onSetProfile, onShowAcce
               <GameCard
                 key={game.id}
                 game={game}
-                masteredKeys={masteredKeys}
                 onNavigate={onNavigate}
               />
             ))}
@@ -294,7 +291,6 @@ export default function Hub({ progressData, onNavigate, onSetProfile, onShowAcce
               <GameCard
                 key={game.id}
                 game={game}
-                masteredKeys={masteredKeys}
                 onNavigate={onNavigate}
               />
             ))}
@@ -311,7 +307,6 @@ export default function Hub({ progressData, onNavigate, onSetProfile, onShowAcce
               <GameCard
                 key={game.id}
                 game={game}
-                masteredKeys={masteredKeys}
                 onNavigate={onNavigate}
               />
             ))}

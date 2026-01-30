@@ -596,7 +596,19 @@ export default function TypingTutor({ progressData, onRecordKeystroke, onEndSess
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-4">
           <button
-            onClick={() => setScreen('menu')}
+            onClick={() => {
+              if (sessionStartTime && currentIndex > 0) {
+                onEndSession({
+                  game: 'typequest',
+                  durationMs: Date.now() - sessionStartTime,
+                  wpm,
+                  accuracy,
+                  exerciseCount: exerciseIndex + 1,
+                  keysUsed: currentLesson?.keys || [],
+                });
+              }
+              setScreen('menu');
+            }}
             className="text-gray-500 hover:text-gray-700 font-medium"
           >
             &larr; Back to Lessons
