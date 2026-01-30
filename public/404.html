@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Typing Tainer</title>
+    <script>
+      // GitHub Pages SPA redirect: convert path to hash route
+      // e.g. /TypingTainer/typeflow -> /TypingTainer/#/typeflow
+      var base = '/TypingTainer';
+      var path = window.location.pathname;
+      if (path.indexOf(base) === 0) {
+        path = path.slice(base.length);
+      }
+      if (path && path !== '/') {
+        window.location.replace(
+          base + '/#' + path + window.location.search
+        );
+      } else {
+        window.location.replace(base + '/');
+      }
+    </script>
+  </head>
+  <body></body>
+</html>
