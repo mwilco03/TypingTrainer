@@ -52,6 +52,16 @@ const GAMES = [
     description: 'A relaxing kitchen scene. Read the clue, find the item, type its name. No timer, no pressure.',
     category: 'break',
   },
+  {
+    id: 'journal',
+    route: '#/journal',
+    name: 'Typing Journal',
+    tagline: 'Free writing with your mastered keys',
+    icon: '\uD83D\uDCD3',
+    color: 'from-yellow-500 to-amber-600',
+    description: 'Write anything you want! Only your learned keys work. See what stories you can tell.',
+    category: 'creative',
+  },
 ];
 
 function GameCard({ game, masteredKeys, onNavigate }) {
@@ -168,6 +178,7 @@ export default function Hub({ progressData, onNavigate, onSetProfile, onShowAcce
 
   const lessons = GAMES.filter(g => g.category === 'lessons');
   const arcade = GAMES.filter(g => g.category === 'arcade');
+  const creative = GAMES.filter(g => g.category === 'creative');
   const breaks = GAMES.filter(g => g.category === 'break');
 
   return (
@@ -263,6 +274,23 @@ export default function Hub({ progressData, onNavigate, onSetProfile, onShowAcce
           </h2>
           <div className="space-y-3">
             {arcade.map(game => (
+              <GameCard
+                key={game.id}
+                game={game}
+                masteredKeys={masteredKeys}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Creative section */}
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">
+            Creative
+          </h2>
+          <div className="space-y-3">
+            {creative.map(game => (
               <GameCard
                 key={game.id}
                 game={game}

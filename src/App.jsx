@@ -10,6 +10,7 @@ import TypingTutor from './games/TypingTutor';
 import TypePong from './games/TypePong';
 import WordHunt from './games/WordHunt';
 import KitchenISpy from './games/KitchenISpy';
+import TypingJournal from './games/TypingJournal';
 
 // Simple hash-based router
 function useHashRoute() {
@@ -113,6 +114,10 @@ export default function App() {
 
     case 'kitchen':
       content = <KitchenISpy {...sharedProps} />;
+      break;
+
+    case 'journal':
+      content = <TypingJournal {...sharedProps} />;
       break;
 
     case 'progress':

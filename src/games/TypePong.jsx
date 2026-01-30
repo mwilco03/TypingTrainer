@@ -1,29 +1,60 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 // ============================================================================
-// WORD LISTS BY LENGTH
+// WORD LIST - ~200 kid-friendly common English words organized by length
 // ============================================================================
 
-const WORDS = {
-  3: ['cat', 'dog', 'run', 'fun', 'big', 'red', 'hat', 'sun', 'cup', 'map', 'bed', 'fix', 'log', 'pen', 'sit', 'top', 'win', 'job', 'kid', 'let', 'mix', 'now', 'old', 'pop', 'row'],
-  4: ['fish', 'jump', 'play', 'tree', 'star', 'blue', 'cake', 'rain', 'bird', 'duck', 'frog', 'game', 'hand', 'joke', 'kite', 'lamp', 'moon', 'nest', 'open', 'park', 'rock', 'ship', 'turn', 'warm', 'yard'],
-  5: ['happy', 'dance', 'smile', 'green', 'light', 'water', 'cloud', 'dream', 'fresh', 'globe', 'heart', 'juice', 'lemon', 'music', 'ocean', 'plant', 'quiet', 'river', 'storm', 'tiger'],
-  6: ['garden', 'rabbit', 'purple', 'basket', 'window', 'flying', 'sunset', 'bridge', 'castle', 'dinner', 'energy', 'friend', 'gentle', 'island', 'jungle', 'kitten', 'laptop', 'market'],
+const WORDS_BY_LENGTH = {
+  3: [
+    'cat', 'dog', 'run', 'fun', 'big', 'red', 'hat', 'sun', 'cup', 'map',
+    'bag', 'bat', 'bed', 'box', 'bus', 'cut', 'dig', 'fan', 'fly', 'got',
+    'gum', 'hen', 'hit', 'hot', 'jam', 'jet', 'jog', 'kit', 'log', 'mix',
+    'net', 'nut', 'pan', 'pen', 'pig', 'pot', 'rug', 'sit', 'top', 'van',
+    'vet', 'web', 'win', 'yak', 'zip', 'add', 'all', 'ask', 'bad', 'can',
+  ],
+  4: [
+    'fish', 'jump', 'play', 'tree', 'star', 'blue', 'cake', 'rain', 'bird',
+    'frog', 'duck', 'hill', 'kite', 'lamp', 'moon', 'nest', 'pond', 'ring',
+    'ship', 'swim', 'turn', 'wave', 'yard', 'bell', 'cold', 'drum', 'five',
+    'gold', 'hand', 'king', 'land', 'melt', 'pink', 'rock', 'skip', 'talk',
+    'warm', 'home', 'ball', 'camp', 'deer', 'fast', 'glad', 'help', 'kind',
+    'last', 'nice', 'open', 'read', 'seed', 'told', 'walk', 'wish', 'good',
+  ],
+  5: [
+    'happy', 'dance', 'smile', 'green', 'light', 'water', 'apple', 'brave',
+    'cloud', 'dream', 'eagle', 'float', 'grape', 'heart', 'juice', 'lemon',
+    'magic', 'night', 'ocean', 'paint', 'queen', 'river', 'space', 'tiger',
+    'under', 'voice', 'whale', 'young', 'beach', 'candy', 'earth', 'flame',
+    'horse', 'jelly', 'lucky', 'music', 'plant', 'quick', 'stone', 'train',
+  ],
+  6: [
+    'garden', 'rabbit', 'purple', 'basket', 'window', 'castle', 'flower',
+    'jacket', 'kitten', 'monkey', 'pencil', 'rocket', 'sunset', 'turtle',
+    'violin', 'winter', 'animal', 'butter', 'candle', 'dinner', 'frozen',
+    'golden', 'insect', 'jingle', 'knight', 'market', 'orange', 'planet',
+    'stream', 'bright', 'cherry', 'finger', 'gentle', 'hidden', 'island',
+  ],
+  7: [
+    'rainbow', 'dolphin', 'giraffe', 'pancake', 'popcorn', 'blanket',
+    'chicken', 'diamond', 'feather', 'holiday', 'kitchen', 'morning',
+    'penguin', 'pumpkin', 'quarter', 'teacher', 'thunder', 'volcano',
+    'weather', 'bicycle', 'journey', 'monster', 'picture', 'printer',
+    'sparrow', 'tractor', 'uniform', 'village', 'whistle', 'amazing',
+  ],
 };
 
-function getWord(level) {
-  let pool;
-  if (level <= 1) pool = WORDS[3];
-  else if (level <= 2) pool = [...WORDS[3], ...WORDS[4]];
-  else if (level <= 3) pool = WORDS[4];
-  else if (level <= 4) pool = [...WORDS[4], ...WORDS[5]];
-  else pool = [...WORDS[5], ...WORDS[6]];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
+// ============================================================================
+// LEVEL CONFIGURATION
+// ============================================================================
 
-function getCrossTime(level) {
-  // Seconds for ball to cross the field
-  return Math.max(3, 8 - level * 0.8);
+function getLevelConfig(level) {
+  switch (level) {
+    case 1: return { wordLengths: [3], crossTimeMs: 8000, targetScore: 5 };
+    case 2: return { wordLengths: [4], crossTimeMs: 7000, targetScore: 5 };
+    case 3: return { wordLengths: [4, 5], crossTimeMs: 6000, targetScore: 5 };
+    case 4: return { wordLengths: [5, 6], crossTimeMs: 5000, targetScore: 5 };
+    default: return { wordLengths: [6, 7], crossTimeMs: 4000, targetScore: 5 };
+  }
 }
 
 // ============================================================================
@@ -53,370 +84,712 @@ const playSound = (type) => {
 };
 
 // ============================================================================
+// WORD SELECTION
+// ============================================================================
+
+function pickWord(wordLengths, keyMetrics) {
+  const practicedKeys = new Set(
+    Object.entries(keyMetrics)
+      .filter(([, m]) => m.total >= 5)
+      .map(([k]) => k)
+  );
+
+  let candidates = [];
+  for (const len of wordLengths) {
+    const words = WORDS_BY_LENGTH[len] || [];
+    candidates.push(...words);
+  }
+
+  if (practicedKeys.size >= 6) {
+    const filtered = candidates.filter(w =>
+      w.split('').every(c => practicedKeys.has(c))
+    );
+    if (filtered.length >= 3) candidates = filtered;
+  }
+
+  if (candidates.length === 0) return 'fun';
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function pickChallenge(level, keyMetrics) {
+  const config = getLevelConfig(level);
+  if (level >= 5 && Math.random() < 0.35) {
+    const a = pickWord([3, 4], keyMetrics);
+    let b = pickWord([3, 4], keyMetrics);
+    let tries = 0;
+    while (b === a && tries < 5) { b = pickWord([3, 4], keyMetrics); tries++; }
+    return a + ' ' + b;
+  }
+  return pickWord(config.wordLengths, keyMetrics);
+}
+
+// ============================================================================
+// SCORE DOTS COMPONENT
+// ============================================================================
+
+function ScoreDots({ count, total, colorFilled, colorEmpty }) {
+  return (
+    <div className="flex gap-1.5">
+      {Array.from({ length: total }, (_, i) => (
+        <div
+          key={i}
+          className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+            i < count ? colorFilled : colorEmpty || 'bg-gray-700/60'
+          } ${i < count ? 'scale-110' : ''}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
 export default function TypePong({ progressData, onRecordKeystroke, onEndSession, onUpdateGameProgress, onNavigate }) {
-  const [gameState, setGameState] = useState('ready'); // ready | playing | levelComplete | gameOver
+  // ---- Game state ----
+  const [gameState, setGameState] = useState('ready');
   const [level, setLevel] = useState(1);
   const [playerScore, setPlayerScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
-  const [word, setWord] = useState('');
+  const [currentWord, setCurrentWord] = useState('');
   const [typedIndex, setTypedIndex] = useState(0);
-  const [ballPosition, setBallPosition] = useState(100); // 0 = player side, 100 = opponent side
-  const [ballDirection, setBallDirection] = useState('left'); // left = toward player
+  const [ballPosition, setBallPosition] = useState(100);
+  const [flashWrong, setFlashWrong] = useState(false);
+  const [scoreFlash, setScoreFlash] = useState(null);
+
+  // ---- Session tracking ----
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalKeystrokes, setTotalKeystrokes] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
   const [lastKeyTime, setLastKeyTime] = useState(null);
-  const [flash, setFlash] = useState(null); // 'green' | 'red' | null
-  const [sessionStart] = useState(Date.now());
+  const keysUsedRef = useRef(new Set());
 
+  // ---- Refs for animation ----
   const inputRef = useRef(null);
-  const animRef = useRef(null);
-  const startTimeRef = useRef(null);
-  const crossTimeRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const lastFrameTimeRef = useRef(null);
+  const ballPosRef = useRef(100);
+  const onBallReachPlayerRef = useRef(null);
+  const sessionReportedRef = useRef(false);
+  const processingRef = useRef(false);
 
-  const targetScore = 5;
+  // ---- Progress data ----
+  const gameData = progressData.gameProgress.pong || { highScore: 0, levelsCleared: 0, totalSessions: 0 };
+  const keyMetrics = progressData.keyMetrics;
 
-  // Start a new rally
-  const startRally = useCallback((lvl) => {
-    const w = getWord(lvl || level);
-    setWord(w);
-    setTypedIndex(0);
-    setBallPosition(100);
-    setBallDirection('left');
-    startTimeRef.current = Date.now();
-    crossTimeRef.current = getCrossTime(lvl || level) * 1000;
-  }, [level]);
+  const levelConfig = useMemo(() => getLevelConfig(level), [level]);
+  const targetScore = levelConfig.targetScore;
 
-  // Ball animation
+  // ---- Focus management ----
   useEffect(() => {
-    if (gameState !== 'playing' || !word) return;
+    if (inputRef.current) inputRef.current.focus();
+  }, [gameState, currentWord]);
 
-    const animate = () => {
-      const elapsed = Date.now() - startTimeRef.current;
-      const progress = Math.min(1, elapsed / crossTimeRef.current);
+  // ---- Animation helpers ----
+  const stopAnimation = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    lastFrameTimeRef.current = null;
+  }, []);
 
-      if (ballDirection === 'left') {
-        // Moving toward player (100 -> 0)
-        setBallPosition(100 - progress * 100);
+  const startAnimation = useCallback((crossTimeMs) => {
+    stopAnimation();
+    ballPosRef.current = 100;
+    setBallPosition(100);
 
-        if (progress >= 1) {
-          // Player missed -- opponent scores
-          playSound('lose');
-          setOpponentScore(prev => {
-            const next = prev + 1;
-            if (next >= targetScore) {
-              setGameState('gameOver');
-            }
-            return next;
-          });
-          // Reset for next rally
-          setTimeout(() => {
-            if (gameState === 'playing') startRally();
-          }, 800);
-          return;
-        }
-      } else {
-        // Ball going back to opponent (0 -> 100) -- visual only
-        setBallPosition(progress * 100);
-        if (progress >= 1) {
-          // Start new rally
-          startRally();
-          return;
-        }
+    const speed = 100 / crossTimeMs; // percent per millisecond
+
+    const animate = (timestamp) => {
+      if (lastFrameTimeRef.current === null) {
+        lastFrameTimeRef.current = timestamp;
+        animFrameRef.current = requestAnimationFrame(animate);
+        return;
       }
 
-      animRef.current = requestAnimationFrame(animate);
+      const delta = Math.min(timestamp - lastFrameTimeRef.current, 50);
+      lastFrameTimeRef.current = timestamp;
+      ballPosRef.current -= speed * delta;
+
+      if (ballPosRef.current <= 2) {
+        ballPosRef.current = 2;
+        setBallPosition(2);
+        stopAnimation();
+        if (onBallReachPlayerRef.current) onBallReachPlayerRef.current();
+        return;
+      }
+
+      setBallPosition(ballPosRef.current);
+      animFrameRef.current = requestAnimationFrame(animate);
     };
 
-    animRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
-  }, [gameState, word, ballDirection, startRally]);
+    animFrameRef.current = requestAnimationFrame(animate);
+  }, [stopAnimation]);
 
-  // Handle keystrokes
+  // ---- Start a new round ----
+  const startNewRound = useCallback((lvl) => {
+    processingRef.current = false;
+    const config = getLevelConfig(lvl);
+    const word = pickChallenge(lvl, keyMetrics);
+    setCurrentWord(word);
+    setTypedIndex(0);
+    setFlashWrong(false);
+    startAnimation(config.crossTimeMs);
+  }, [keyMetrics, startAnimation]);
+
+  // ---- Ball reaches player side (opponent scores) ----
+  onBallReachPlayerRef.current = () => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    playSound('lose');
+    setScoreFlash('opponent');
+    setTimeout(() => setScoreFlash(null), 500);
+
+    setOpponentScore(prev => {
+      const next = prev + 1;
+      if (next >= targetScore) {
+        setGameState('gameOver');
+      } else {
+        setTimeout(() => startNewRound(level), 700);
+      }
+      return next;
+    });
+  };
+
+  // ---- Player completes the word ----
+  const handleWordComplete = useCallback(() => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    stopAnimation();
+    playSound('score');
+    setScoreFlash('player');
+    setTimeout(() => setScoreFlash(null), 500);
+    setWordsCompleted(c => c + 1);
+
+    setPlayerScore(prev => {
+      const next = prev + 1;
+      if (next >= targetScore) {
+        playSound('levelUp');
+        setGameState('levelComplete');
+        onUpdateGameProgress('pong', (d) => ({
+          ...d,
+          levelsCleared: Math.max(d.levelsCleared || 0, level),
+        }));
+        setTimeout(() => {
+          const nextLvl = level + 1;
+          setLevel(nextLvl);
+          setPlayerScore(0);
+          setOpponentScore(0);
+          setGameState('playing');
+          startNewRound(nextLvl);
+        }, 2500);
+      } else {
+        setTimeout(() => startNewRound(level), 350);
+      }
+      return next;
+    });
+  }, [stopAnimation, targetScore, level, startNewRound, onUpdateGameProgress]);
+
+  // ---- Report session on game over ----
+  useEffect(() => {
+    if (gameState !== 'gameOver' || sessionReportedRef.current) return;
+    sessionReportedRef.current = true;
+
+    const acc = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 0;
+    const dMs = sessionStartTime ? Date.now() - sessionStartTime : 0;
+    const wpmVal = dMs > 5000 ? Math.round((totalCorrect / 5) / (dMs / 60000)) : 0;
+
+    onUpdateGameProgress('pong', (prev) => ({
+      ...prev,
+      highScore: Math.max(prev.highScore || 0, wordsCompleted),
+      totalSessions: (prev.totalSessions || 0) + 1,
+    }));
+
+    onEndSession({
+      game: 'pong',
+      durationMs: dMs,
+      wpm: wpmVal,
+      accuracy: acc,
+      exerciseCount: wordsCompleted,
+      keysUsed: [...keysUsedRef.current],
+    });
+  }, [gameState, totalCorrect, totalKeystrokes, sessionStartTime, wordsCompleted, onUpdateGameProgress, onEndSession]);
+
+  // ---- Keystroke handler ----
   const handleKeyDown = useCallback((e) => {
+    // READY: any key starts the game
     if (gameState === 'ready') {
+      if (e.key === 'Escape') return;
+      e.preventDefault();
+      sessionReportedRef.current = false;
+      keysUsedRef.current = new Set();
       setGameState('playing');
-      startRally();
-      return;
-    }
-
-    if (gameState === 'levelComplete') {
-      const nextLevel = level + 1;
-      setLevel(nextLevel);
+      setSessionStartTime(Date.now());
+      setLevel(1);
       setPlayerScore(0);
       setOpponentScore(0);
-      setGameState('playing');
-      startRally(nextLevel);
+      setTotalCorrect(0);
+      setTotalKeystrokes(0);
+      setWordsCompleted(0);
+      setLastKeyTime(null);
+      startNewRound(1);
       return;
     }
 
-    if (gameState !== 'playing' || !word || ballDirection !== 'left') return;
+    // GAME OVER: Enter restarts
+    if (gameState === 'gameOver' && e.key === 'Enter') {
+      e.preventDefault();
+      setGameState('ready');
+      stopAnimation();
+      return;
+    }
 
+    // Only process typing during active play
+    if (gameState !== 'playing' || !currentWord) return;
     const typed = e.key;
-    if (typed.length !== 1) return;
-
+    if (typed.length !== 1 && typed !== ' ') return;
     e.preventDefault();
+
+    const expected = currentWord[typedIndex];
+    if (expected === undefined) return;
+
     const now = Date.now();
-    const iki = lastKeyTime ? now - lastKeyTime : 150;
+    const ikiMs = lastKeyTime ? Math.min(2000, now - lastKeyTime) : 150;
     setLastKeyTime(now);
-    setTotalKeystrokes(prev => prev + 1);
+    setTotalKeystrokes(t => t + 1);
 
-    const expected = word[typedIndex];
-    const isCorrect = typed.toLowerCase() === expected.toLowerCase();
+    const previousKey = typedIndex > 0 ? currentWord[typedIndex - 1] : null;
+    onRecordKeystroke(expected, typed === expected, ikiMs, previousKey);
+    keysUsedRef.current.add(expected);
 
-    // Report to progression engine
-    const prevKey = typedIndex > 0 ? word[typedIndex - 1] : null;
-    onRecordKeystroke(expected, isCorrect, iki, prevKey);
-
-    if (isCorrect) {
+    if (typed === expected) {
       playSound('correct');
-      setTotalCorrect(prev => prev + 1);
-      setFlash('green');
-      setTimeout(() => setFlash(null), 100);
-
-      const nextIndex = typedIndex + 1;
-      setTypedIndex(nextIndex);
-
-      if (nextIndex >= word.length) {
-        // Word completed! Ball bounces back
-        playSound('score');
-        setWordsCompleted(prev => prev + 1);
-        setBallDirection('right');
-        startTimeRef.current = Date.now();
-        crossTimeRef.current = 600; // Quick bounce back
-
-        setPlayerScore(prev => {
-          const next = prev + 1;
-          if (next >= targetScore) {
-            // Level complete
-            playSound('levelUp');
-            setTimeout(() => setGameState('levelComplete'), 500);
-          }
-          return next;
-        });
+      setTotalCorrect(c => c + 1);
+      const nextIdx = typedIndex + 1;
+      setTypedIndex(nextIdx);
+      if (nextIdx >= currentWord.length) {
+        handleWordComplete();
       }
     } else {
       playSound('wrong');
-      setFlash('red');
-      setTimeout(() => setFlash(null), 200);
+      setFlashWrong(true);
+      setTimeout(() => setFlashWrong(false), 200);
     }
-  }, [gameState, word, typedIndex, ballDirection, level, lastKeyTime, onRecordKeystroke, startRally]);
+  }, [gameState, currentWord, typedIndex, lastKeyTime, startNewRound, stopAnimation, handleWordComplete, onRecordKeystroke]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Focus input
-  useEffect(() => {
-    if (inputRef.current) inputRef.current.focus();
-  }, [gameState]);
+  // Cleanup animation on unmount
+  useEffect(() => () => stopAnimation(), [stopAnimation]);
 
-  // End game handler
-  const handleEndGame = () => {
-    const accuracy = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 0;
-    const durationMs = Date.now() - sessionStart;
-    const wpm = durationMs > 0 ? Math.round((wordsCompleted * 5) / (durationMs / 60000)) : 0;
+  // ---- Quit / back handler ----
+  const handleQuit = useCallback(() => {
+    stopAnimation();
 
-    onUpdateGameProgress('pong', (prev) => ({
-      ...prev,
-      highScore: Math.max(prev.highScore || 0, wordsCompleted),
-      levelsCleared: Math.max(prev.levelsCleared || 0, level - 1),
-      totalSessions: (prev.totalSessions || 0) + 1,
-    }));
+    if (!sessionReportedRef.current && wordsCompleted > 0) {
+      sessionReportedRef.current = true;
+      const acc = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 0;
+      const dMs = sessionStartTime ? Date.now() - sessionStartTime : 0;
+      const wpmVal = dMs > 5000 ? Math.round((totalCorrect / 5) / (dMs / 60000)) : 0;
 
-    onEndSession({
-      game: 'pong',
-      durationMs,
-      wpm,
-      accuracy,
-      exerciseCount: wordsCompleted,
-      keysUsed: [],
-    });
+      onUpdateGameProgress('pong', (prev) => ({
+        ...prev,
+        highScore: Math.max(prev.highScore || 0, wordsCompleted),
+        totalSessions: (prev.totalSessions || 0) + 1,
+      }));
+
+      onEndSession({
+        game: 'pong',
+        durationMs: dMs,
+        wpm: wpmVal,
+        accuracy: acc,
+        exerciseCount: wordsCompleted,
+        keysUsed: [...keysUsedRef.current],
+      });
+    }
 
     onNavigate('#/');
-  };
+  }, [stopAnimation, totalCorrect, totalKeystrokes, sessionStartTime, wordsCompleted, onUpdateGameProgress, onEndSession, onNavigate]);
+
+  // ---- Derived display values ----
+  const accuracy = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 100;
+  const durationSec = sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0;
+  const wpm = durationSec > 5 ? Math.round((totalCorrect / 5) / (durationSec / 60)) : 0;
 
   // ============================================================================
-  // RENDER
+  // RENDER: READY SCREEN
   // ============================================================================
-
-  // Ready screen
   if (gameState === 'ready') {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <input ref={inputRef} className="opacity-0 absolute pointer-events-none" autoFocus onBlur={(e) => setTimeout(() => e.target?.focus(), 10)} />
-        <div className="text-center">
-          <div className="text-6xl mb-4">{'\uD83C\uDFD3'}</div>
-          <h1 className="text-4xl font-bold text-white mb-4">Type Pong</h1>
-          <p className="text-gray-400 mb-2">A word is heading your way!</p>
-          <p className="text-gray-400 mb-8">Type it before it reaches your paddle.</p>
-          <div className="bg-gray-800 rounded-xl p-6 mb-8 max-w-sm mx-auto">
-            <div className="text-left text-gray-300 text-sm space-y-2">
-              <p>&#8226; Words bounce toward you</p>
-              <p>&#8226; Type the word to bounce it back</p>
-              <p>&#8226; Score {targetScore} to advance</p>
-              <p>&#8226; Miss and opponent scores</p>
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4">
+        <input
+          ref={inputRef}
+          className="opacity-0 absolute pointer-events-none"
+          autoFocus
+          onBlur={(e) => setTimeout(() => e.target?.focus(), 10)}
+        />
+
+        <button
+          onClick={() => onNavigate('#/')}
+          className="absolute top-4 left-4 text-gray-500 hover:text-white text-sm transition-colors"
+        >
+          &larr; Home
+        </button>
+
+        <div className="text-6xl font-black mb-1 tracking-tight">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-teal-400 to-cyan-400">
+            TYPE PONG
+          </span>
+        </div>
+        <div className="text-gray-500 text-sm mb-10">Arcade Typing Game</div>
+
+        {/* Mini court preview */}
+        <div className="relative w-72 h-36 bg-gray-800/50 rounded-xl border border-gray-700/40 mb-10 overflow-hidden">
+          <div className="absolute left-1/2 top-0 bottom-0 border-l-2 border-dashed border-gray-700/40 -translate-x-1/2" />
+          <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-14 rounded-full bg-blue-500/80" />
+          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 w-1.5 h-14 rounded-full bg-red-500/80" />
+          <div
+            className="absolute top-1/2 px-3 py-1 rounded-full bg-gray-700/80 border border-teal-500/40 font-mono text-sm text-teal-300 animate-bounce"
+            style={{ left: '55%', transform: 'translate(-50%, -50%)' }}
+          >
+            cat
+          </div>
+        </div>
+
+        <div className="max-w-sm text-center space-y-2 text-gray-400 text-sm mb-10">
+          <p>A word flies toward your paddle.</p>
+          <p>Type it correctly before it gets past you!</p>
+          <p className="text-gray-500">First to {targetScore} points wins each round.</p>
+        </div>
+
+        <div className="bg-gray-800/50 rounded-xl p-4 max-w-xs w-full mb-10 space-y-2.5 text-sm border border-gray-700/30">
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 text-green-400 text-xs font-bold">+</div>
+            <span className="text-gray-300">Type the word correctly to score</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-400 text-xs font-bold">-</div>
+            <span className="text-gray-300">Ball gets past you, opponent scores</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0 text-yellow-400 text-xs font-bold">5</div>
+            <span className="text-gray-300">Clear 5 levels to become champion</span>
+          </div>
+        </div>
+
+        {(gameData.highScore > 0 || gameData.levelsCleared > 0) && (
+          <div className="text-gray-600 text-xs mb-6">
+            Best: {gameData.highScore} words | Levels cleared: {gameData.levelsCleared}
+          </div>
+        )}
+
+        <div className="animate-pulse text-lg text-teal-400 font-medium">
+          Press any key to start
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================================
+  // RENDER: GAME OVER SCREEN
+  // ============================================================================
+  if (gameState === 'gameOver') {
+    return (
+      <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4">
+        <input
+          ref={inputRef}
+          className="opacity-0 absolute pointer-events-none"
+          autoFocus
+          onBlur={(e) => setTimeout(() => e.target?.focus(), 10)}
+        />
+
+        <button
+          onClick={() => onNavigate('#/')}
+          className="absolute top-4 left-4 text-gray-500 hover:text-white text-sm transition-colors"
+        >
+          &larr; Home
+        </button>
+
+        <div className="text-5xl font-black text-red-500 mb-2">GAME OVER</div>
+        <p className="text-gray-500 mb-8">Opponent reached {targetScore} points</p>
+
+        <div className="bg-gray-800/60 rounded-2xl p-6 max-w-sm w-full mb-8 border border-gray-700/30">
+          <div className="grid grid-cols-2 gap-5 text-center">
+            <div>
+              <div className="text-3xl font-bold text-teal-400">{wordsCompleted}</div>
+              <div className="text-xs text-gray-500 mt-1">Words Typed</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-blue-400">Lv {level}</div>
+              <div className="text-xs text-gray-500 mt-1">Reached</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-green-400">{accuracy}%</div>
+              <div className="text-xs text-gray-500 mt-1">Accuracy</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-purple-400">{wpm}</div>
+              <div className="text-xs text-gray-500 mt-1">WPM</div>
             </div>
           </div>
-          <p className="text-green-400 animate-pulse text-lg">Press any key to start</p>
-          <button onClick={() => onNavigate('#/')} className="mt-6 text-gray-500 hover:text-gray-300 text-sm">
-            &larr; Back to menu
+        </div>
+
+        <div className="space-y-3 w-full max-w-sm">
+          <button
+            onClick={() => setGameState('ready')}
+            className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+          >
+            Play Again
+          </button>
+          <button
+            onClick={() => onNavigate('#/')}
+            className="w-full bg-gray-800 text-gray-400 py-3 rounded-xl font-medium hover:bg-gray-700 transition-colors border border-gray-700/40"
+          >
+            Back to Home
           </button>
         </div>
+        <div className="text-gray-700 text-xs mt-6">Press Enter to play again</div>
       </div>
     );
   }
 
-  // Game over screen
-  if (gameState === 'gameOver') {
-    const accuracy = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 0;
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="text-6xl mb-4">{level > 1 ? '\uD83C\uDFC6' : '\uD83D\uDCAA'}</div>
-          <h1 className="text-3xl font-bold text-white mb-2">Game Over</h1>
-          <p className="text-gray-400 mb-6">Level {level} reached</p>
-          <div className="bg-gray-800 rounded-xl p-6 mb-6 grid grid-cols-2 gap-4 max-w-xs mx-auto">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">{wordsCompleted}</div>
-              <div className="text-xs text-gray-500">Words</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-400">{accuracy}%</div>
-              <div className="text-xs text-gray-500">Accuracy</div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <button
-              onClick={() => {
-                setLevel(1);
-                setPlayerScore(0);
-                setOpponentScore(0);
-                setTotalCorrect(0);
-                setTotalKeystrokes(0);
-                setWordsCompleted(0);
-                setGameState('ready');
-              }}
-              className="w-48 bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600"
-            >
-              Play Again
-            </button>
-            <br />
-            <button onClick={handleEndGame} className="text-gray-400 hover:text-white text-sm mt-4">
-              Back to menu
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Level complete screen
-  if (gameState === 'levelComplete') {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <input ref={inputRef} className="opacity-0 absolute pointer-events-none" autoFocus onBlur={(e) => setTimeout(() => e.target?.focus(), 10)} />
-        <div className="text-center">
-          <div className="text-6xl mb-4">{'\u2B50'}</div>
-          <h1 className="text-3xl font-bold text-white mb-2">Level {level} Complete!</h1>
-          <p className="text-gray-400 mb-8">Get ready for faster words...</p>
-          <p className="text-green-400 animate-pulse">Press any key to continue</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Playing screen
-  const ballLeft = `${ballPosition}%`;
+  // ============================================================================
+  // RENDER: PLAYING + LEVEL COMPLETE
+  // ============================================================================
+  const ballPct = Math.max(6, Math.min(94, ballPosition));
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col select-none">
-      <input ref={inputRef} className="opacity-0 absolute pointer-events-none" autoFocus onBlur={(e) => setTimeout(() => e.target?.focus(), 10)} />
+    <div className="min-h-screen bg-gray-900 flex flex-col select-none overflow-hidden">
+      {/* Hidden input for keystroke capture */}
+      <input
+        ref={inputRef}
+        className="opacity-0 absolute pointer-events-none"
+        autoFocus
+        onBlur={(e) => setTimeout(() => e.target?.focus(), 10)}
+      />
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <button onClick={handleEndGame} className="text-gray-500 hover:text-gray-300 text-sm">
-          &larr; Quit
-        </button>
-        <div className="text-gray-500 text-sm font-medium">Level {level}</div>
-        <div className="w-12" />
-      </div>
-
-      {/* Score */}
-      <div className="flex justify-center gap-8 mb-4">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-blue-400">{playerScore}</div>
-          <div className="text-xs text-gray-500">You</div>
-        </div>
-        <div className="text-gray-600 text-2xl font-light self-center">:</div>
-        <div className="text-center">
-          <div className="text-3xl font-bold text-red-400">{opponentScore}</div>
-          <div className="text-xs text-gray-500">CPU</div>
-        </div>
-      </div>
-
-      {/* Court */}
-      <div className="flex-1 relative mx-4 mb-4 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)' }}>
-        {/* Center line */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-px border-l-2 border-dashed border-gray-700" />
-
-        {/* Player paddle (left) */}
-        <div
-          className="absolute left-2 top-1/2 -translate-y-1/2 w-3 rounded-full bg-blue-400 shadow-lg shadow-blue-400/30"
-          style={{ height: '80px' }}
-        />
-
-        {/* Opponent paddle (right) */}
-        <div
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-3 rounded-full bg-red-400 shadow-lg shadow-red-400/30"
-          style={{ height: '80px' }}
-        />
-
-        {/* Ball / Word */}
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-none"
-          style={{ left: ballLeft }}
+      {/* ---- Top bar ---- */}
+      <div className="flex items-center justify-between px-3 py-2.5 bg-gray-800/90 border-b border-gray-700/40 z-10 shrink-0">
+        <button
+          onClick={handleQuit}
+          className="text-gray-500 hover:text-white text-sm px-2 py-1 rounded hover:bg-gray-700/50 transition-colors"
         >
-          <div
-            className={`
-              px-4 py-2 rounded-full font-mono text-xl font-bold
-              shadow-lg
-              ${flash === 'green' ? 'bg-green-500 shadow-green-400/50' : flash === 'red' ? 'bg-red-500 shadow-red-400/50' : 'bg-white shadow-white/20'}
-            `}
-          >
-            {word.split('').map((char, i) => (
-              <span
-                key={i}
-                className={
-                  i < typedIndex
-                    ? 'text-green-600'
-                    : i === typedIndex
-                    ? 'text-gray-900 underline decoration-2 decoration-blue-400'
-                    : 'text-gray-400'
-                }
-              >
-                {char}
-              </span>
-            ))}
+          &larr; Home
+        </button>
+
+        <div className="bg-gray-700/40 px-3 py-1 rounded-full text-sm text-gray-400 font-medium">
+          Level {level}
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className={`font-mono text-lg font-bold transition-all duration-200 ${
+            scoreFlash === 'player' ? 'text-green-300 scale-125' : 'text-blue-400'
+          }`}>
+            {playerScore}
+          </div>
+          <span className="text-gray-600 text-sm">vs</span>
+          <div className={`font-mono text-lg font-bold transition-all duration-200 ${
+            scoreFlash === 'opponent' ? 'text-yellow-300 scale-125' : 'text-red-400'
+          }`}>
+            {opponentScore}
           </div>
         </div>
       </div>
 
-      {/* Progress bar showing ball travel */}
-      <div className="mx-4 mb-4">
-        <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-none ${ballDirection === 'left' ? 'bg-red-400' : 'bg-green-400'}`}
-            style={{ width: `${100 - ballPosition}%` }}
-          />
+      {/* ---- Score progress dots ---- */}
+      <div className="flex items-center justify-center gap-6 py-2 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-blue-400/60 font-medium">YOU</span>
+          <ScoreDots count={playerScore} total={targetScore} colorFilled="bg-blue-400" />
+        </div>
+        <div className="text-gray-700 text-xs">first to {targetScore}</div>
+        <div className="flex items-center gap-2">
+          <ScoreDots count={opponentScore} total={targetScore} colorFilled="bg-red-400" />
+          <span className="text-xs text-red-400/60 font-medium">CPU</span>
         </div>
       </div>
+
+      {/* ---- Court area ---- */}
+      <div className="flex-1 relative mx-2 my-1 rounded-xl overflow-hidden" style={{ minHeight: '260px' }}>
+        {/* Court background */}
+        <div
+          className="absolute inset-0 rounded-xl border border-gray-700/20"
+          style={{ background: 'linear-gradient(180deg, #111827 0%, #0f172a 100%)' }}
+        />
+
+        {/* Center dashed line */}
+        <div className="absolute left-1/2 top-0 bottom-0 -translate-x-1/2 border-l-2 border-dashed border-gray-700/30" />
+
+        {/* Center circle */}
+        <div className="absolute left-1/2 top-1/2 w-20 h-20 md:w-28 md:h-28 border-2 border-gray-700/20 rounded-full -translate-x-1/2 -translate-y-1/2" />
+
+        {/* Player paddle (left, blue) */}
+        <div className="absolute left-1 md:left-2 top-1/2 -translate-y-1/2">
+          <div
+            className="w-2 md:w-3 rounded-full bg-gradient-to-b from-blue-400 to-blue-600"
+            style={{
+              height: '100px',
+              boxShadow: ballPosition < 30
+                ? '0 0 25px rgba(59,130,246,0.6), 0 0 50px rgba(59,130,246,0.2)'
+                : '0 0 15px rgba(59,130,246,0.3)',
+              transition: 'box-shadow 0.3s',
+            }}
+          />
+        </div>
+
+        {/* Opponent paddle (right, red) */}
+        <div className="absolute right-1 md:right-2 top-1/2 -translate-y-1/2">
+          <div
+            className="w-2 md:w-3 rounded-full bg-gradient-to-b from-red-400 to-red-600"
+            style={{
+              height: '100px',
+              boxShadow: '0 0 15px rgba(239,68,68,0.3)',
+            }}
+          />
+        </div>
+
+        {/* Ball trail */}
+        {gameState === 'playing' && currentWord && (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 h-0.5 rounded-full pointer-events-none"
+            style={{
+              left: `${ballPct}%`,
+              right: '6%',
+              background: 'linear-gradient(to right, rgba(45,212,191,0.25), transparent)',
+            }}
+          />
+        )}
+
+        {/* Ball (word container) */}
+        {gameState === 'playing' && currentWord && (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none"
+            style={{ left: `${ballPct}%` }}
+          >
+            {/* Glow */}
+            <div
+              className="absolute inset-0 rounded-full blur-xl pointer-events-none"
+              style={{
+                background: flashWrong
+                  ? 'rgba(239,68,68,0.35)'
+                  : 'rgba(45,212,191,0.2)',
+                transform: 'scale(2.5)',
+              }}
+            />
+
+            {/* Pill-shaped ball */}
+            <div
+              className={`relative px-4 py-2 md:px-6 md:py-3 rounded-full border-2 backdrop-blur-sm transition-colors duration-75 ${
+                flashWrong
+                  ? 'bg-red-950/80 border-red-500/70'
+                  : 'bg-gray-900/85 border-teal-400/50'
+              }`}
+              style={{
+                boxShadow: flashWrong
+                  ? '0 0 30px rgba(239,68,68,0.5), inset 0 1px 0 rgba(239,68,68,0.1)'
+                  : '0 0 25px rgba(45,212,191,0.2), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
+            >
+              <div className="font-mono text-xl md:text-3xl tracking-wider whitespace-nowrap flex">
+                {currentWord.split('').map((char, i) => {
+                  const isTyped = i < typedIndex;
+                  const isCurrent = i === typedIndex;
+                  return (
+                    <span
+                      key={i}
+                      className={`transition-colors duration-75 ${
+                        isTyped ? 'text-green-400' : ''
+                      } ${
+                        isCurrent
+                          ? 'text-yellow-300 underline decoration-2 underline-offset-4 decoration-yellow-400/80'
+                          : ''
+                      } ${
+                        !isTyped && !isCurrent ? 'text-white/90' : ''
+                      }`}
+                    >
+                      {char === ' ' ? '\u00A0' : char}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Score flash overlay */}
+        {scoreFlash && (
+          <div
+            className={`absolute inset-0 rounded-xl pointer-events-none transition-opacity duration-300 ${
+              scoreFlash === 'player'
+                ? 'bg-gradient-to-r from-blue-500/10 to-transparent'
+                : 'bg-gradient-to-l from-red-500/10 to-transparent'
+            }`}
+          />
+        )}
+
+        {/* Level complete overlay */}
+        {gameState === 'levelComplete' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/85 backdrop-blur-sm rounded-xl z-20">
+            <div className="text-center px-4">
+              <div className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400 mb-3 animate-pulse">
+                Level {level} Complete!
+              </div>
+              <div className="text-gray-400 text-lg mb-2">
+                Get ready for Level {level + 1}...
+              </div>
+              <div className="text-gray-600 text-sm">
+                Words get longer and faster!
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ---- Bottom bar: word echo + stats ---- */}
+      {gameState === 'playing' && currentWord && (
+        <div className="bg-gray-800/80 border-t border-gray-700/30 px-4 py-3 shrink-0">
+          <div className="max-w-lg mx-auto">
+            {/* Word echo */}
+            <div className="text-center font-mono text-lg md:text-xl tracking-[0.15em] mb-2">
+              {currentWord.split('').map((char, i) => {
+                const isTyped = i < typedIndex;
+                const isCurrent = i === typedIndex;
+                return (
+                  <span
+                    key={i}
+                    className={`inline-block px-0.5 ${
+                      isTyped ? 'text-green-400' : ''
+                    } ${
+                      isCurrent ? 'text-yellow-300 bg-yellow-400/10 rounded animate-pulse font-bold' : ''
+                    } ${
+                      !isTyped && !isCurrent ? 'text-gray-600' : ''
+                    }`}
+                  >
+                    {char === ' ' ? '\u2423' : char}
+                  </span>
+                );
+              })}
+            </div>
+            {/* Stats */}
+            <div className="flex justify-center gap-6 text-xs text-gray-600">
+              <span>
+                Accuracy:{' '}
+                <span className={accuracy >= 80 ? 'text-green-500' : accuracy >= 60 ? 'text-yellow-500' : 'text-red-400'}>
+                  {accuracy}%
+                </span>
+              </span>
+              <span>Words: <span className="text-teal-400">{wordsCompleted}</span></span>
+              {wpm > 0 && <span>WPM: <span className="text-purple-400">{wpm}</span></span>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
