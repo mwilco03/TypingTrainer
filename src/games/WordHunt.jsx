@@ -192,7 +192,7 @@ export default function WordHunt({ progressData, onRecordKeystroke, onEndSession
   // ============================================================================
 
   useEffect(() => {
-    if (inputRef.current && (gameState === 'playing' || gameState === 'ready')) {
+    if (inputRef.current) {
       inputRef.current.focus();
     }
   }, [gameState]);

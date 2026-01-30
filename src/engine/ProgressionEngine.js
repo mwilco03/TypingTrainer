@@ -58,6 +58,7 @@ function createDefaultData() {
       duckhunt: { highScore: 0, ducksHit: 0, totalSessions: 0 },
       kitchen: { completedTiers: [], totalSessions: 0 },
       journal: { totalSessions: 0, totalWords: 0, totalEntries: 0 },
+      typedance: { highScore: 0, bestLevel: 0, bestCombo: 0, totalSessions: 0 },
     },
 
     // Session history for parent reports
@@ -408,6 +409,7 @@ const ProgressionEngine = {
             duckhunt: { ...defaults.gameProgress.duckhunt, ...(parsed.gameProgress?.duckhunt || {}) },
             kitchen: { ...defaults.gameProgress.kitchen, ...(parsed.gameProgress?.kitchen || {}) },
             journal: { ...defaults.gameProgress.journal, ...(parsed.gameProgress?.journal || {}) },
+            typedance: { ...defaults.gameProgress.typedance, ...(parsed.gameProgress?.typedance || {}) },
           },
           unlockables: { ...defaults.unlockables, ...(parsed.unlockables || {}) },
         };

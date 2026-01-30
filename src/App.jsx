@@ -11,6 +11,7 @@ import TypePong from './games/TypePong';
 import WordHunt from './games/WordHunt';
 import KitchenISpy from './games/KitchenISpy';
 import TypingJournal from './games/TypingJournal';
+import TypeDance from './games/TypeDance';
 
 // Error boundary to prevent full-app crashes from game errors
 class ErrorBoundary extends React.Component {
@@ -155,6 +156,10 @@ export default function App() {
 
     case 'journal':
       content = <TypingJournal {...sharedProps} />;
+      break;
+
+    case 'typedance':
+      content = <TypeDance {...sharedProps} />;
       break;
 
     case 'progress':

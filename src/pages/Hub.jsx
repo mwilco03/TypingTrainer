@@ -62,6 +62,16 @@ const GAMES = [
     description: 'Write anything you want! Only your learned keys work. See what stories you can tell.',
     category: 'creative',
   },
+  {
+    id: 'typedance',
+    route: '#/typedance',
+    name: 'Type Dance',
+    tagline: 'Hit the notes as they drop!',
+    icon: '\uD83C\uDFB6',
+    color: 'from-purple-500 to-fuchsia-600',
+    description: 'DDR-style rhythm typing. Notes fall down lanes \u2014 type them when they hit the zone. Build combos for bonus points!',
+    category: 'arcade',
+  },
 ];
 
 function GameCard({ game, onNavigate }) {
