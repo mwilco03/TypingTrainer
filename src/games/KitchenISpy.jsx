@@ -77,12 +77,35 @@ function shuffleArray(arr) {
   return shuffled;
 }
 
+function levenshteinDistance(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function checkAnswer(input, target) {
+  const clean = input.trim().toLowerCase();
+  const t = target.toLowerCase();
+  if (clean === t) return true;
+  const threshold = t.length <= 4 ? 1 : 2;
+  return levenshteinDistance(clean, t) <= threshold;
+}
+
 // ============================================================================
 // SUB-COMPONENTS
 // ============================================================================
 
 /** A single kitchen item card in the scene grid. */
-function KitchenItemCard({ item, isFound, isJustFound, isWrong, onClick }) {
+function KitchenItemCard({ item, isFound, isJustFound, isWrong, isSelected, onClick }) {
   return (
     <div
       onClick={!isFound ? onClick : undefined}
@@ -91,6 +114,8 @@ function KitchenItemCard({ item, isFound, isJustFound, isWrong, onClick }) {
         'transition-all duration-300 border-2 min-h-[88px]',
         isFound
           ? 'border-green-300 bg-green-50'
+          : isSelected
+          ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-300'
           : 'border-amber-100 hover:border-amber-300 cursor-pointer active:scale-95',
         isJustFound ? 'found-glow' : '',
         isWrong ? 'wrong-shake' : '',
@@ -196,10 +221,13 @@ export default function KitchenISpy({
   const [hintRevealed, setHintRevealed] = useState(false);
   const [justFoundIndex, setJustFoundIndex] = useState(null);
   const [wrongIndex, setWrongIndex] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [inputValue, setInputValue] = useState('');
   const [celebrationKey, setCelebrationKey] = useState(0);
   const [sessionStartTime] = useState(Date.now());
 
   const messageTimerRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Current tier items (display order is fixed by zone)
   const tierItems = KITCHEN_TIERS[currentTier];
@@ -214,6 +242,13 @@ export default function KitchenISpy({
       if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
     };
   }, []);
+
+  // Focus input when an item is selected for typing
+  useEffect(() => {
+    if (selectedIndex !== null && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [selectedIndex]);
 
   // ---------------------------------------------------------------------------
   // Show a temporary message
@@ -239,6 +274,8 @@ export default function KitchenISpy({
     setHintRevealed(false);
     setJustFoundIndex(null);
     setWrongIndex(null);
+    setSelectedIndex(null);
+    setInputValue('');
     setGameState('playing');
   }, []);
 
@@ -248,49 +285,16 @@ export default function KitchenISpy({
   const handleItemClick = useCallback(
     (idx) => {
       if (gameState !== 'playing' || foundItems.has(idx) || !currentItem) return;
+      if (idx === selectedIndex) return; // already selected
+
+      setSelectedIndex(null);
+      setInputValue('');
 
       if (idx === currentTargetIndex) {
-        // -- Correct pick --
-        const newFound = new Set(foundItems);
-        newFound.add(currentTargetIndex);
-        setFoundItems(newFound);
-        setHintRevealed(false);
-        setJustFoundIndex(currentTargetIndex);
-        setCelebrationKey((prev) => prev + 1);
+        // -- Correct pick — select for typing confirmation --
+        setSelectedIndex(idx);
         setWrongIndex(null);
-
-        showTimedMessage({ text: 'You found it!', type: 'success' }, 1400);
-
-        // Remove the glow highlight after the animation completes
-        setTimeout(() => setJustFoundIndex(null), 1200);
-
-        if (newFound.size >= TOTAL_ITEMS_PER_TIER) {
-          // ---- Tier complete ----
-          setTimeout(() => {
-            setGameState('complete');
-
-            onUpdateGameProgress('kitchen', (prev) => ({
-              completedTiers: [
-                ...new Set([...(prev?.completedTiers || []), currentTier]),
-              ],
-              totalItemsFound:
-                (prev?.totalItemsFound || 0) + TOTAL_ITEMS_PER_TIER,
-              totalSessions: (prev?.totalSessions || 0) + 1,
-            }));
-
-            onEndSession({
-              game: 'kitchen',
-              durationMs: Date.now() - sessionStartTime,
-              wpm: 0,
-              accuracy: 100,
-              exerciseCount: TOTAL_ITEMS_PER_TIER,
-              keysUsed: [],
-            });
-          }, 1600);
-        } else {
-          // Advance to next clue after a brief pause
-          setTimeout(() => setCurrentStep((prev) => prev + 1), 1500);
-        }
+        showTimedMessage({ text: 'Now type its name!', type: 'hint' }, 3000);
       } else {
         // -- Wrong pick --
         setWrongIndex(idx);
@@ -302,9 +306,78 @@ export default function KitchenISpy({
       gameState,
       currentItem,
       currentTargetIndex,
+      selectedIndex,
+      foundItems,
+      showTimedMessage,
+    ]
+  );
+
+  // Handle typing confirmation after selecting an item
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      if (selectedIndex === null || !currentItem) return;
+
+      if (checkAnswer(inputValue, currentItem.name)) {
+        // -- Correct typing! Mark found --
+        const newFound = new Set(foundItems);
+        newFound.add(currentTargetIndex);
+        setFoundItems(newFound);
+        setHintRevealed(false);
+        setJustFoundIndex(currentTargetIndex);
+        setCelebrationKey((prev) => prev + 1);
+        setWrongIndex(null);
+        setSelectedIndex(null);
+        setInputValue('');
+
+        // Record keystrokes for the typed word
+        const typed = inputValue.trim().toLowerCase();
+        for (const ch of typed) {
+          onRecordKeystroke(ch, true, 0, null);
+        }
+
+        showTimedMessage({ text: 'You found it!', type: 'success' }, 1400);
+        setTimeout(() => setJustFoundIndex(null), 1200);
+
+        if (newFound.size >= TOTAL_ITEMS_PER_TIER) {
+          setTimeout(() => {
+            setGameState('complete');
+            onUpdateGameProgress('kitchen', (prev) => ({
+              completedTiers: [
+                ...new Set([...(prev?.completedTiers || []), currentTier]),
+              ],
+              totalItemsFound:
+                (prev?.totalItemsFound || 0) + TOTAL_ITEMS_PER_TIER,
+              totalSessions: (prev?.totalSessions || 0) + 1,
+            }));
+            onEndSession({
+              game: 'kitchen',
+              durationMs: Date.now() - sessionStartTime,
+              wpm: 0,
+              accuracy: 100,
+              exerciseCount: TOTAL_ITEMS_PER_TIER,
+              keysUsed: [...new Set(typed.split(''))],
+            });
+          }, 1600);
+        } else {
+          setTimeout(() => setCurrentStep((prev) => prev + 1), 1500);
+        }
+      } else {
+        // -- Wrong typing --
+        showTimedMessage({ text: 'Not quite! Check the spelling.', type: 'tryAgain' }, 2000);
+        setInputValue('');
+        if (inputRef.current) inputRef.current.focus();
+      }
+    },
+    [
+      selectedIndex,
+      inputValue,
+      currentItem,
+      currentTargetIndex,
       foundItems,
       currentTier,
       sessionStartTime,
+      onRecordKeystroke,
       onUpdateGameProgress,
       onEndSession,
       showTimedMessage,
@@ -541,6 +614,7 @@ export default function KitchenISpy({
                       isFound={foundItems.has(idx)}
                       isJustFound={idx === justFoundIndex}
                       isWrong={idx === wrongIndex}
+                      isSelected={idx === selectedIndex}
                       onClick={() => handleItemClick(idx)}
                     />
                   );
@@ -575,32 +649,63 @@ export default function KitchenISpy({
         </div>
 
         {/* ----------------------------------------------------------------- */}
-        {/* Instruction area                                                  */}
+        {/* Instruction / typing area                                         */}
         {/* ----------------------------------------------------------------- */}
         <div className="bg-gray-800 rounded-2xl p-4 shadow-xl border-4 border-amber-800/70 text-center">
-          <div className="text-amber-300 font-bold text-lg mb-1">
-            {'\uD83D\uDC46'} Tap the item you spy!
-          </div>
-          <div className="text-gray-400 text-xs mb-3">
-            Read the clue, then tap the matching item above
-          </div>
-
-          {/* Hint button */}
-          <button
-            type="button"
-            onClick={handleHint}
-            disabled={hintRevealed}
-            className={[
-              'text-sm px-5 py-2 rounded-xl transition-colors',
-              hintRevealed
-                ? 'bg-amber-900/50 text-amber-300'
-                : 'bg-gray-700 text-amber-400 hover:text-amber-300 hover:bg-gray-600',
-            ].join(' ')}
-          >
-            {hintRevealed
-              ? `Starts with "${currentItem?.name[0].toUpperCase()}"`
-              : '\uD83D\uDCA1 Need a hint?'}
-          </button>
+          {selectedIndex !== null ? (
+            <>
+              <div className="text-green-300 font-bold text-lg mb-1">
+                {'\u2705'} Now type its name!
+              </div>
+              <div className="text-gray-400 text-xs mb-3">
+                Type the name of the item you selected
+              </div>
+              <form onSubmit={handleSubmit} className="flex gap-2 max-w-xs mx-auto">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={`Type "${currentItem?.name}" ...`}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  autoComplete="off"
+                  className="flex-1 bg-gray-700 text-white rounded-xl px-4 py-2.5 text-base font-medium outline-none focus:ring-2 focus:ring-amber-400 placeholder-gray-500"
+                  style={{ fontSize: '16px' }}
+                />
+                <button
+                  type="submit"
+                  className="bg-amber-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-amber-400 transition-colors"
+                >
+                  {'\u2713'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="text-amber-300 font-bold text-lg mb-1">
+                {'\uD83D\uDC46'} Tap the item you spy!
+              </div>
+              <div className="text-gray-400 text-xs mb-3">
+                Read the clue, then tap the matching item above
+              </div>
+              <button
+                type="button"
+                onClick={handleHint}
+                disabled={hintRevealed}
+                className={[
+                  'text-sm px-5 py-2 rounded-xl transition-colors',
+                  hintRevealed
+                    ? 'bg-amber-900/50 text-amber-300'
+                    : 'bg-gray-700 text-amber-400 hover:text-amber-300 hover:bg-gray-600',
+                ].join(' ')}
+              >
+                {hintRevealed
+                  ? `Starts with "${currentItem?.name[0].toUpperCase()}"`
+                  : '\uD83D\uDCA1 Need a hint?'}
+              </button>
+            </>
+          )}
         </div>
 
         {/* ----------------------------------------------------------------- */}
