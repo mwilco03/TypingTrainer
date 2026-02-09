@@ -582,7 +582,7 @@ export default function WordHunt({ progressData, onRecordKeystroke, onEndSession
     const accuracy = totalKeysPressed > 0
       ? Math.round((correctKeys / totalKeysPressed) * 100)
       : 0;
-    const wpm = durationMs > 0
+    const wpm = durationMs >= 5000
       ? Math.round((correctKeys / 5) / (durationMs / 60000))
       : 0;
 

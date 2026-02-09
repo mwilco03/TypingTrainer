@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const STORAGE_KEY = 'typingTainer_a11y';
+const STORAGE_KEY = 'typingTrainer_a11y';
 
 const DEFAULTS = {
   reduceMotion: false,

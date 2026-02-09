@@ -213,7 +213,7 @@ const AdaptiveEngine = {
     const times = recent.map(k => k.time).filter(t => t > 0 && t < 2000);
     const totalTime = times.reduce((a, b) => a + b, 0);
     const avgTime = times.length > 0 ? Math.round(totalTime / times.length) : 0;
-    const wpm = totalTime > 0 ? Math.round((recent.length / 5) / (totalTime / 60000)) : 0;
+    const wpm = totalTime >= 5000 ? Math.round((recent.length / 5) / (totalTime / 60000)) : 0;
 
     return { accuracy, wpm, avgTime };
   },
@@ -800,7 +800,7 @@ export default function TypeFlow({ progressData, onRecordKeystroke, onEndSession
 
     const times = recent.map(k => k.time).filter(t => t > 0 && t < 2000);
     const totalTime = times.reduce((a, b) => a + b, 0);
-    const wpm = totalTime > 0 ? Math.round((recent.length / 5) / (totalTime / 60000)) : 0;
+    const wpm = totalTime >= 5000 ? Math.round((recent.length / 5) / (totalTime / 60000)) : 0;
 
     const moduleIndex = currentModule ? MODULES.findIndex(m => m.id === currentModule.id) : 0;
     const phase = AdaptiveEngine.determinePhase(keystrokes, currentModule, moduleIndex);
@@ -872,7 +872,7 @@ export default function TypeFlow({ progressData, onRecordKeystroke, onEndSession
 
   // Handle keystrokes
   const handleKeyDown = useCallback((e) => {
-    if (screen !== 'practice' || !currentText) return;
+    if (screen !== 'practice' || !currentText || !currentModule) return;
 
     const expected = currentText[currentIndex];
     const typed = e.key;
@@ -949,6 +949,8 @@ export default function TypeFlow({ progressData, onRecordKeystroke, onEndSession
 
   // End session
   const handleEndSession = () => {
+    if (!currentModule) return;
+
     const results = {
       wpm: liveMetrics.wpm,
       accuracy: liveMetrics.accuracy,

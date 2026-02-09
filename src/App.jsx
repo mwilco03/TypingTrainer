@@ -72,7 +72,7 @@ export default function App() {
   const [progressData, setProgressData] = useState(() => ProgressionEngine.load());
   const [showA11y, setShowA11y] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    return !localStorage.getItem('typingTainer_onboarded');
+    return !localStorage.getItem('typingTrainer_onboarded');
   });
   const { route, navigate } = useHashRoute();
   // Applies accessibility CSS classes to document root
@@ -116,7 +116,7 @@ export default function App() {
   if (showOnboarding) {
     return (
       <HandPlacement onComplete={() => {
-        localStorage.setItem('typingTainer_onboarded', '1');
+        localStorage.setItem('typingTrainer_onboarded', '1');
         setShowOnboarding(false);
       }} />
     );

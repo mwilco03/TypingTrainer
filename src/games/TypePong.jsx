@@ -302,8 +302,8 @@ export default function TypePong({ progressData, onRecordKeystroke, onEndSession
   }, [stopAnimation, targetScore, level, startNewRound, onUpdateGameProgress]);
 
   // ---- Report session on game over ----
-  useEffect(() => {
-    if (gameState !== 'gameOver' || sessionReportedRef.current) return;
+  const reportSession = useCallback(() => {
+    if (sessionReportedRef.current) return false;
     sessionReportedRef.current = true;
 
     const acc = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 0;
@@ -324,7 +324,15 @@ export default function TypePong({ progressData, onRecordKeystroke, onEndSession
       exerciseCount: wordsCompleted,
       keysUsed: [...keysUsedRef.current],
     });
-  }, [gameState, totalCorrect, totalKeystrokes, sessionStartTime, wordsCompleted, onUpdateGameProgress, onEndSession]);
+
+    return true;
+  }, [totalCorrect, totalKeystrokes, sessionStartTime, wordsCompleted, onUpdateGameProgress, onEndSession]);
+
+  useEffect(() => {
+    if (gameState === 'gameOver') {
+      reportSession();
+    }
+  }, [gameState, reportSession]);
 
   // ---- Keystroke handler ----
   const handleKeyDown = useCallback((e) => {
@@ -411,30 +419,12 @@ export default function TypePong({ progressData, onRecordKeystroke, onEndSession
   const handleQuit = useCallback(() => {
     stopAnimation();
 
-    if (!sessionReportedRef.current && wordsCompleted > 0) {
-      sessionReportedRef.current = true;
-      const acc = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 0;
-      const dMs = sessionStartTime ? Date.now() - sessionStartTime : 0;
-      const wpmVal = dMs > 5000 ? Math.round((totalCorrect / 5) / (dMs / 60000)) : 0;
-
-      onUpdateGameProgress('pong', (prev) => ({
-        ...prev,
-        highScore: Math.max(prev.highScore || 0, wordsCompleted),
-        totalSessions: (prev.totalSessions || 0) + 1,
-      }));
-
-      onEndSession({
-        game: 'pong',
-        durationMs: dMs,
-        wpm: wpmVal,
-        accuracy: acc,
-        exerciseCount: wordsCompleted,
-        keysUsed: [...keysUsedRef.current],
-      });
+    if (wordsCompleted > 0) {
+      reportSession();
     }
 
     onNavigate('#/');
-  }, [stopAnimation, totalCorrect, totalKeystrokes, sessionStartTime, wordsCompleted, onUpdateGameProgress, onEndSession, onNavigate]);
+  }, [stopAnimation, wordsCompleted, reportSession, onNavigate]);
 
   // ---- Derived display values ----
   const accuracy = totalKeystrokes > 0 ? Math.round((totalCorrect / totalKeystrokes) * 100) : 100;

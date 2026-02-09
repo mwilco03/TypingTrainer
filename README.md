@@ -1,8 +1,8 @@
-# Typing Tainer
+# Typing Trainer
 
 A typing training platform for kids and learners. Eight games and activities build real keyboard skills through adaptive lessons, arcade challenges, creative writing, and brain breaks. All progress is tracked locally with no login required.
 
-**Live:** [https://mwilco03.github.io/TypingTainer/](https://mwilco03.github.io/TypingTainer/)
+**Live:** [https://mwilco03.github.io/TypingTrainer/](https://mwilco03.github.io/TypingTrainer/)
 
 ## Quick Start
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173/TypingTainer/](http://localhost:5173/TypingTainer/) in a browser.
+Open [http://localhost:5173/TypingTrainer/](http://localhost:5173/TypingTrainer/) in a browser.
 
 ### Production Build
 
@@ -146,7 +146,7 @@ public/
 ## Tech Stack
 
 - **React 18** — functional components with hooks
-- **Vite 6** — build tool (base path `/TypingTainer/`)
+- **Vite 6** — build tool (base path `/TypingTrainer/`)
 - **Tailwind CSS 3** — utility-first styling
 - **qrcode.react** — QR code generation for parent challenges
 - **localStorage** — all data persisted client-side, no backend
@@ -160,10 +160,10 @@ All data lives in `localStorage` under these keys:
 
 | Key | Purpose |
 |-----|---------|
-| `typingTainer` | Main progression data (key metrics, sessions, game progress, profile, stars) |
-| `typingTainer_a11y` | Accessibility settings |
-| `typingTainer_journal` | Journal entries (last 50) |
-| `typingTainer_onboarded` | Onboarding completion flag |
+| `typingTrainer` | Main progression data (key metrics, sessions, game progress, profile, stars) |
+| `typingTrainer_a11y` | Accessibility settings |
+| `typingTrainer_journal` | Journal entries (last 50) |
+| `typingTrainer_onboarded` | Onboarding completion flag |
 
 No data is sent to any server. Reset all progress from the Progress Report page.
 
@@ -178,7 +178,7 @@ All games work on mobile devices:
 ## Development
 
 ```bash
-npm run dev      # Dev server at localhost:5173/TypingTainer/
+npm run dev      # Dev server at localhost:5173/TypingTrainer/
 npm run build    # Production build to dist/
 npm run preview  # Preview production build locally
 ```
