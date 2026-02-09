@@ -10,7 +10,7 @@
 // - Game-specific progress that feeds cross-game unlocks
 // ============================================================================
 
-const STORAGE_KEY = 'typingTainer';
+const STORAGE_KEY = 'typingTrainer';
 const MAX_SESSIONS = 100; // keep last N sessions for history
 
 // Age-appropriate benchmark norms
@@ -367,7 +367,7 @@ function encodeParentChallenge(keyMetrics) {
   };
 
   // URL-safe base64 encoding -- the QR code will contain a URL
-  // like /TypingTainer/#/challenge/<encoded>
+  // like /TypingTrainer/#/challenge/<encoded>
   // Standard base64 uses +, /, = which break URL routing, so replace them
   try {
     return btoa(JSON.stringify(challenge))
@@ -402,15 +402,39 @@ const ProgressionEngine = {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
+
+        // Validate basic structure
+        if (!parsed || typeof parsed !== 'object') {
+          console.warn('Invalid progress data structure: not an object');
+          return createDefaultData();
+        }
+
+        // Validate critical fields exist and have correct types
+        if (parsed.keyMetrics && typeof parsed.keyMetrics !== 'object') {
+          console.warn('Invalid keyMetrics structure');
+          parsed.keyMetrics = {};
+        }
+        if (parsed.sessions && !Array.isArray(parsed.sessions)) {
+          console.warn('Invalid sessions structure');
+          parsed.sessions = [];
+        }
+        if (parsed.profile && typeof parsed.profile !== 'object') {
+          console.warn('Invalid profile structure');
+          parsed.profile = {};
+        }
+
         // Merge with defaults to handle schema evolution
         const defaults = createDefaultData();
         return {
           ...defaults,
           ...parsed,
-          profile: { ...defaults.profile, ...parsed.profile },
+          profile: { ...defaults.profile, ...(parsed.profile || {}) },
+          keyMetrics: parsed.keyMetrics || {},
+          bigramMetrics: parsed.bigramMetrics || {},
+          sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
           gameProgress: {
             ...defaults.gameProgress,
-            ...parsed.gameProgress,
+            ...(parsed.gameProgress || {}),
             typeflow: { ...defaults.gameProgress.typeflow, ...(parsed.gameProgress?.typeflow || {}) },
             typequest: { ...defaults.gameProgress.typequest, ...(parsed.gameProgress?.typequest || {}) },
             pong: { ...defaults.gameProgress.pong, ...(parsed.gameProgress?.pong || {}) },

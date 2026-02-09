@@ -223,7 +223,7 @@ export default function TypeBreakout({
     const accuracy =
       totalKeys > 0 ? Math.round((correctKeys / totalKeys) * 100) : 0;
     const wpm =
-      durationMs > 0
+      durationMs >= 5000
         ? Math.round((correctKeys / 5) / (durationMs / 60000))
         : 0;
 

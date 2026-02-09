@@ -514,7 +514,7 @@ export default function TypeDance({ progressData, onRecordKeystroke, onEndSessio
   const handleQuit = useCallback(() => {
     const durationMs = sessionStart ? Date.now() - sessionStart : 0;
     const accuracy = totalKeys > 0 ? Math.round((correctKeys / totalKeys) * 100) : 0;
-    const wpm = durationMs > 0 ? Math.round((correctKeys / 5) / (durationMs / 60000)) : 0;
+    const wpm = durationMs >= 5000 ? Math.round((correctKeys / 5) / (durationMs / 60000)) : 0;
 
     onUpdateGameProgress('typedance', prev => ({
       ...prev,
@@ -541,7 +541,7 @@ export default function TypeDance({ progressData, onRecordKeystroke, onEndSessio
     if (screen === 'gameOver') {
       const durationMs = sessionStart ? Date.now() - sessionStart : 0;
       const accuracy = totalKeys > 0 ? Math.round((correctKeys / totalKeys) * 100) : 0;
-      const wpm = durationMs > 0 ? Math.round((correctKeys / 5) / (durationMs / 60000)) : 0;
+      const wpm = durationMs >= 5000 ? Math.round((correctKeys / 5) / (durationMs / 60000)) : 0;
 
       onUpdateGameProgress('typedance', prev => ({
         ...prev,

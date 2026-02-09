@@ -110,7 +110,7 @@ export default function ParentChallenge({ encodedData, onNavigate }) {
           const accuracy = Math.round(
             ((totalChars - errorCount) / totalChars) * 100
           );
-          const wpm = Math.round((totalChars / 5) / (duration / 60000));
+          const wpm = duration >= 5000 ? Math.round((totalChars / 5) / (duration / 60000)) : 0;
           setResults({ wpm, accuracy, duration, errorCount });
           setScreen('done');
         }

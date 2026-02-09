@@ -182,7 +182,7 @@ function getPrompts(availableWords) {
 }
 
 // Journal entry storage key
-const JOURNAL_KEY = 'typingTainer_journal';
+const JOURNAL_KEY = 'typingTrainer_journal';
 
 function loadEntries() {
   try {
@@ -193,7 +193,11 @@ function loadEntries() {
 }
 
 function saveEntries(entries) {
-  localStorage.setItem(JOURNAL_KEY, JSON.stringify(entries));
+  try {
+    localStorage.setItem(JOURNAL_KEY, JSON.stringify(entries));
+  } catch (e) {
+    console.warn('Failed to save journal entries:', e);
+  }
 }
 
 // ============================================================================
